@@ -3,9 +3,8 @@
 
 pub mod commands;
 
-use core::fmt;
-
 use embedded_hal::i2c::I2c;
+use thiserror::Error;
 
 const ADDR: u8 = 0x59;
 
@@ -13,17 +12,14 @@ pub struct SGP40<I2C> {
     i2c: I2C,
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq, PartialOrd, Ord, Error)]
 pub enum Sgp40Error<I2cError> {
+    #[error("invalid response")]
     InvalidResponse,
+    #[error("invalid CRC")]
     InvalidCrc,
-    I2c(I2cError),
-}
-
-impl<E> From<E> for Sgp40Error<E> {
-    fn from(err: E) -> Self {
-        Self::I2c(err)
-    }
+    #[error(transparent)]
+    I2c(#[from] I2cError),
 }
 
 impl<E> embedded_hal::i2c::Error for Sgp40Error<E>
@@ -37,21 +33,6 @@ where
         }
     }
 }
-
-impl<E> fmt::Display for Sgp40Error<E>
-where
-    E: fmt::Display,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidResponse => write!(f, "invalid response"),
-            Self::InvalidCrc => write!(f, "invalid CRC"),
-            Self::I2c(err) => err.fmt(f),
-        }
-    }
-}
-
-impl<E: fmt::Debug + fmt::Display> core::error::Error for Sgp40Error<E> {}
 
 impl<I2C: I2c> SGP40<I2C> {
     pub fn new(i2c: I2C) -> Self {
